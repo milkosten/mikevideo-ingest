@@ -236,6 +236,9 @@ async def init(request: Request) -> Response:
         return _err(400, f"chunks map size {len(chunks)} != count {count}")
     if not file_hash:
         return _err(400, "missing file_hash")
+    chunk_algo = str(manifest.get("chunk_hash_algo", "md5")).lower()
+    if chunk_algo not in ("md5", "sha256"):
+        return _err(400, f"unsupported chunk_hash_algo: {chunk_algo}")
 
     # Ticket constraints (if a signed ticket was used).
     if ticket is not None:
@@ -332,9 +335,18 @@ async def put_chunk(request: Request) -> Response:
     if len(body) != expected_len:
         return _err(422, f"length mismatch: expected {expected_len}, got {len(body)}")
 
-    expected_md5 = _strip_algo(str(manifest["chunks"][str(index)]))
-    got_md5 = hashlib.md5(body).hexdigest()
-    if got_md5 != expected_md5:
+    # Per-chunk hash algorithm: the manifest may declare chunk_hash_algo
+    # ("md5" | "sha256"). Android uses md5; the browser (WebCrypto, no md5)
+    # uses sha256. Default to md5 for backward compatibility.
+    chunk_algo = str(manifest.get("chunk_hash_algo", "md5")).lower()
+    if chunk_algo not in ("md5", "sha256"):
+        return _err(400, f"unsupported chunk_hash_algo: {chunk_algo}")
+    expected_chunk_hash = _strip_algo(str(manifest["chunks"][str(index)]))
+    if chunk_algo == "sha256":
+        got_chunk_hash = hashlib.sha256(body).hexdigest()
+    else:
+        got_chunk_hash = hashlib.md5(body).hexdigest()
+    if got_chunk_hash != expected_chunk_hash:
         return _err(422, "chunk hash mismatch")
 
     lock = await _lock_for(upload_id)

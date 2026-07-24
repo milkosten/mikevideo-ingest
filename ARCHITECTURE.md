@@ -16,7 +16,10 @@ finalize. (House rule from the 1.55 GB reboot-loop incident.)
 
 ## Manifest (client-authored)
 { upload_id, filename, content_type, total_size, chunk_size, count, file_hash:"sha256:…",
-  chunks:{ "0":"md5:…", … } }   // last chunk length = total_size-(count-1)*chunk_size
+  chunk_hash_algo:"md5"|"sha256", chunks:{ "0":"md5:…", … } }
+  // last chunk length = total_size-(count-1)*chunk_size
+  // chunk_hash_algo declares the per-chunk digest: Android=md5, browser(WebCrypto)=sha256.
+  // Defaults to md5 when absent (backward-compatible). file_hash is ALWAYS sha256.
 
 ## Endpoints (Bearer ticket/token)
 - POST /ingest/init  {manifest} → create OR resume (if upload_id/file_hash exists). Pre-alloc sparse
