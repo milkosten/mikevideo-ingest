@@ -1,0 +1,16 @@
+services:
+  mikevideo-ingest:
+    build: .
+    container_name: mikevideo-ingest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_ROOT: /data/mikevideo/ingest
+    volumes:
+      - /data/mikevideo/ingest:/data/mikevideo/ingest
+    ports:
+      # Publish on the docker bridge gateway only (172.17.0.1) — NOT on the
+      # public interface. Caddy (in the mikeos-osm compose network) reaches it
+      # via `reverse_proxy 172.17.0.1:${PORT}`; the port is unreachable from
+      # the internet because it is not bound to 0.0.0.0 / the public IP.
+      - "172.17.0.1:${PORT:-8080}:${PORT:-8080}"
